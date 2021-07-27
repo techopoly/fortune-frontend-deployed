@@ -8,6 +8,7 @@ const Whole = (props)=>{
        <React.Fragment>
            <App name='Create'/>
            <App name='Enter'/>
+           <App name = 'Indicator'/>
        </React.Fragment>
    )
  

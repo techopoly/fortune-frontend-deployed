@@ -4,7 +4,7 @@ import classes from './list.module.css';
 
 const List = (props) => {
 
-    const {_id, exitCoin, name} = {...props}
+    const { _id, exitCoin, name } = { ...props }
 
     //const [coinSymbol, setCoinSymbol] = useState('');
     //const [coin_id, setCoin_id] = useState('');
@@ -15,12 +15,59 @@ const List = (props) => {
 
 
 
+    useEffect(() => {
+        let interval;
+        getCoin(props._id)
+            .then(response => {
+                setCoin(response.coin);
+                console.log(response.coin);
+                return response
+            })
+            .then((response) => {
+                const startPrice = response.coin.startPrice
+                console.log(startPrice);
+                fetchPrice()
+                    .then(result => {
+                        console.log(result);
+                        setSymbol(prevSymbol => {
+                            const currentPrice = result.price
+                            console.log('current Price: ', currentPrice)
+                            setCurrentPrice(currentPrice);
+                            const profit = ((currentPrice - startPrice) / startPrice) * 100;
+                            setGrowth(profit.toFixed(5));
+                            return prevSymbol;
+                        })
+                    });
+                interval = startInterval()
+
+            })
+
+        return () => {
+            console.log('cleanup')
+            clearInterval(interval);
+        }
+
+
+
+    }, [])
+
 
 
     const getCoin = async (_id) => {
-        
-        
-        const url = name === "Create" ? 'http://localhost:8080/getCoin' :'http://localhost:8080/getEnterCoin' ;
+        let url;
+        switch (name) {
+            case "Create":
+                url = process.env.REACT_APP_BACKEND_URL + '/getCoin';
+                break;
+            case "Enter":
+                url = process.env.REACT_APP_BACKEND_URL + '/getEnterCoin';
+                break;
+            // case "Indicator" :
+            //     url = process.env.REACT_APP_BACKEND_URL + '/getEnterCoin';
+            //     break;
+            default:
+                throw new Error('no policy matched(eg: Create,Enter)')
+        }
         const data = {
             _id: _id
         }
@@ -44,15 +91,10 @@ const List = (props) => {
         let symbol; // using symbo locally 
 
         setCoin(preCoin => {
-            setSymbol(preCoin.symbol === 'doge' ? "dogecoin" : "matic-network")
-            setSymbol((prevSymbol) => {
-                console.log('symbol: ', prevSymbol);
-                symbol = prevSymbol; // setting the symbol using latest symbol by using setSymbol()
-                return prevSymbol;
-            })
+            symbol = preCoin.symbol
             return preCoin;
         })
-        return fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd`)
+        return fetch(process.env.REACT_APP_BACKEND_2_URL + `/price?symbol=${symbol}`)
             .then((response) => {
                 return response.json();
             })
@@ -62,33 +104,34 @@ const List = (props) => {
     }
 
 
-    useEffect(() => {
 
-        getCoin(props._id)
-            .then(response => {
-                setCoin(response.coin);
-                console.log(response.coin);
-                return response
-            })
-            .then((response) => {
-                const startPrice = response.coin.startPrice
-                console.log(startPrice);
-                fetchPrice()
-                    .then(result => {
-                        console.log(result);
-                        setSymbol(prevSymbol => {
-                            const currentPrice = result[prevSymbol].usd;
-                            console.log('current Price: ', currentPrice)
-                            setCurrentPrice(currentPrice);
-                            const profit = ((currentPrice - startPrice) / startPrice) * 100;
-                            setGrowth(profit.toFixed(5));
-                            return prevSymbol;
-                        })
-                    })
+
+
+    const updateEverything = () => {
+        let startPrice;
+        setCoin(prevCoin => {
+            startPrice = prevCoin.startPrice;
+            return prevCoin;
+        })
+
+        console.log('[updateEverything]')
+        fetchPrice()
+            .then(result => {
+                console.log(result);
+                const currentPrice = result.price
+                console.log('current Price: ', currentPrice)
+                setCurrentPrice(currentPrice);
+                const profit = ((currentPrice - startPrice) / startPrice) * 100;
+                setGrowth(profit.toFixed(5));
+
 
             })
+    }
 
-    }, [])
+    const startInterval = () => {
+        const interval = setInterval(updateEverything, 5000);
+        return interval;
+    }
 
 
 
@@ -99,7 +142,7 @@ const List = (props) => {
         <div className={classes.movie}>
             <div className={classes.topPart} >
                 <h2>{coin.symbol}</h2>
-                <button className={classes.btn} onClick={()=>{exitCoin(_id)}}>Exit</button >
+                <button className={classes.btn} onClick={() => { exitCoin(_id) }}>Exit</button >
 
             </div>
             <div className={classes.group}>

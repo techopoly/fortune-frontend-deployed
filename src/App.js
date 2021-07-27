@@ -16,15 +16,22 @@ function App(props) {
 
   const [coinName, setCoinName] = useState('');
   const [threshold, setThreshold] = useState(0);
+  const [indicator, setIndicator] = useState('');
+  const [interval, setInterval] = useState(0);
+  const [interval_metric, setInterval_metric] = useState('');
   const [currentCoins, setCurrentCoins] = useState([]);
   const [currentEnterCoins, setCurrentEnterCoins] = useState([]);
+  const [currentIndicator, setCurrentIndicator] = useState([])
   const [id, setId] = useState('');
 
 
 
   const fetchCurrentCoins = async () => {
 
-    const url = 'http://localhost:8080/getCurrentCoins';
+    const url = process.env.REACT_APP_BACKEND_URL + '/getCurrentCoins';
+    //http://localhost:8080
+    // const url = 'http://localhost:8080/getCurrentCoins';
+
 
     const response = await axios.post(url);
     const currentCoinsArray = response.data.currentCoins;
@@ -33,8 +40,8 @@ function App(props) {
   }
 
   const fetchCurrentEnterCoins = async () => {
-
-    const url = 'http://localhost:8080/getCurrentEnterCoins';
+    const url = process.env.REACT_APP_BACKEND_URL + '/getCurrentEnterCoins';
+    //const url = 'http://localhost:8080/getCurrentEnterCoins';
 
     const response = await axios.post(url);
     const currentEnterCoinsArray = response.data.currentEnterCoins;
@@ -43,14 +50,20 @@ function App(props) {
   }
 
 
+  const fetchCurrentIndicator = async () => {
+    const url = process.env.REACT_APP_BACKEND_2_URL + '/indicator/getCurrentIndicator';
+    //const url = 'http://localhost:8080/getCurrentEnterCoins';
+
+    const response = await axios.get(url);
+    const currentIndicatorArray = response.data;
+    console.log(currentIndicatorArray);
+    setCurrentIndicator(currentIndicatorArray);
+  }
+
 
   useEffect(() => {
-    if (props.name === 'Create') {
-      fetchCurrentCoins();
-    }
-    else if (props.name === 'Enter') {
-      fetchCurrentEnterCoins();
-    }
+
+    fetchCurrentCoinConditionaly();
 
   }, []);
 
@@ -62,9 +75,9 @@ function App(props) {
           return result
         })
         .then((result) => {
-          const _id = result.coin._id;
-          setId(_id);
-         fetchCurrentCoinConditionaly();
+          // const _id = result.coin._id;
+          // setId(_id);
+          fetchCurrentCoinConditionaly();
         })
 
     }
@@ -73,25 +86,49 @@ function App(props) {
 
   const fetchCurrentCoinConditionaly = () => {
 
-    if(props.name === 'Create'){
+    if (props.name === 'Create') {
       fetchCurrentCoins();
       console.log('fetchCurrentCoinConditionaly')
     }
-    if(props.name === 'Enter'){
+    if (props.name === 'Enter') {
       fetchCurrentEnterCoins();
       console.log('fetchCurrentCoinConditionaly')
+    }
+    if (props.name === 'Indicator') {
+      fetchCurrentIndicator();
+      console.log('fetchCurrentCoinConditionaly');
     }
 
   }
 
 
   const createCoin = async () => {
-
-    const url = props.name === 'Create' ? 'http://localhost:8080/createCoin' : 'http://localhost:8080/enterCoin';
-
-    const data = {
-      symbol: coinName,
-      threshold: threshold
+    let url;
+    let data;
+    try { } catch (err) { }
+    switch (props.name) {
+      case ('Create'):
+        url = process.env.REACT_APP_BACKEND_URL + '/createCoin'
+        data = {
+          symbol: coinName,
+          threshold: threshold
+        }
+        break;
+      case ('Enter'):
+        url = process.env.REACT_APP_BACKEND_URL + '/enterCoin'
+        data = {
+          symbol: coinName,
+          threshold: threshold
+        }
+        break;
+      case ('Indicator'):
+        const param = `symbol=${coinName}&indicator=${indicator}&interval=${interval}&interval_metric=${interval_metric}`
+        console.log(param)
+        url = process.env.REACT_APP_BACKEND_2_URL + `/indicator/createIndicator?${param}`
+        data = {}
+        break;
+      default:
+        throw new Error('no policy matched(eg: Create,Enter)')
     }
 
     const response = await fetch(url, {
@@ -107,7 +144,7 @@ function App(props) {
   }
 
   const getCoin = async (_id) => {
-    const url = 'http://localhost:8080/getCoin';
+    const url = process.env.REACT_APP_BACKEND_URL + '/getCoin';
     const data = {
       _id: _id
     }
@@ -126,20 +163,44 @@ function App(props) {
 
 
   const exitCoin = async (id) => {
+    let url;
+    switch (props.name) {
+      case ('Create'):
+        url = process.env.REACT_APP_BACKEND_URL + `/exit?_id=${id}`
+        break;
+      case ('Enter'):
+        url = process.env.REACT_APP_BACKEND_URL + `/exitEnter?_id=${id}`
+        break;
+      case ('Indicator'):
+        url = process.env.REACT_APP_BACKEND_2_URL + `/indicator/exitIndicator?_id=${id}`
+        break;
+      default:
+        throw new Error('no policy matched(eg: Create,Enter)')
+    }
 
-    const url = props.name === 'Create' ? `http://localhost:8080/exit?_id=${id}` : `http://localhost:8080/exitEnter?_id=${id}`;
+    // const response = await fetch(url, {
+    //   method: 'POST', // *GET, POST, PUT, DELETE, etc.
+    //   headers: {
+    //     'Content-Type': 'application/json'
+    //     // 'Content-Type': 'application/x-www-form-urlencoded',
+    //   }
+    // });
+    // const response = await axios.post(url);
+    // console.log(response.data);
+    // fetchCurrentCoinConditionaly();
+    // console.log('exit_id: ', id);
+    axios.post(url)
+      .then((response) => {
+        console.log(response.data);
+        fetchCurrentCoinConditionaly();
+        console.log('exit_id: ', id);
+        return response
+      })
+      .catch(err => {
+        console.log(err)
+      })
 
-    const response = await fetch(url, {
-      method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      headers: {
-        'Content-Type': 'application/json'
-        // 'Content-Type': 'application/x-www-form-urlencoded',
-      }
-    });
-    fetchCurrentCoins();
-    fetchCurrentEnterCoins();
-    console.log('exit_id: ', id);
-    return response.json()
+    //return response.json()
   }
 
 
@@ -154,7 +215,32 @@ function App(props) {
       return name;
     })
   }
+  const onIndicatorHandler = (event) => {
+    console.log("Indicator: " + event.target.value);
+    let name = event.target.value;
+    setIndicator((prevState) => {
+      console.log(name);
+      return name;
+    })
+  }
 
+  const onIntervalHandler = (event) => {
+    console.log("Interval: " + event.target.value);
+    let name = event.target.value;
+    setInterval((prevState) => {
+      console.log(name);
+      return name;
+    })
+  }
+
+  const onInterval_metricHandler = (event) => {
+    console.log("Interval_metric " + event.target.value);
+    let name = event.target.value;
+    setInterval_metric((prevState) => {
+      console.log(name);
+      return name;
+    })
+  }
 
 
   const onThresholdHandler = (event) => {
@@ -167,19 +253,32 @@ function App(props) {
   }
 
 
-  let list = (<Lists currentCoins={currentCoins} exitCoin={exitCoin} name='Create' />)
+  let list = (<Lists currentCoins={currentCoins} exitCoin={exitCoin} name={'Create'} />)
   if (props.name === 'Enter') {
     list = (<Lists currentCoins={currentEnterCoins} exitCoin={exitCoin} name='Enter' />)
+  } else if (props.name === 'Indicator') {
+    list = (<Lists currentCoins={currentIndicator} exitCoin={exitCoin} name={'Indicator'} />)
   }
+
+  let form = props.name === 'Indicator' ? (<Form
+    onCoinNameHandler={onCoinNameHandler}
+    onIndicatorHandler={onIndicatorHandler}
+    onIntervalHandler={onIntervalHandler}
+    onInterval_metricHandler={onInterval_metricHandler}
+    start={start}
+    name={props.name}
+  />) : (<Form
+    onThresholdHandler={onThresholdHandler}
+    onCoinNameHandler={onCoinNameHandler}
+    start={start}
+    name={props.name}
+  />)
 
   return (
     <React.Fragment>
       <section className='middle'>
         <h1>{props.name}</h1>
-        <Form onThresholdHandler={onThresholdHandler}
-          onCoinNameHandler={onCoinNameHandler}
-          start={start}
-        />
+        {form}
         {list}
         <button onClick={fetchCurrentCoinConditionaly} >Fetch Current Coins</button>
         <Symbol />
